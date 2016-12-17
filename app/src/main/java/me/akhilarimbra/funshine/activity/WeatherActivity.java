@@ -1,4 +1,4 @@
-package me.akhilarimbra.funshine;
+package me.akhilarimbra.funshine.activity;
 
 import android.*;
 import android.Manifest;
@@ -24,7 +24,14 @@ import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 
+import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
+
+import java.util.ArrayList;
+
+import me.akhilarimbra.funshine.*;
+import me.akhilarimbra.funshine.model.DailyWeatherReport;
 
 public class WeatherActivity extends AppCompatActivity implements
         GoogleApiClient.OnConnectionFailedListener,
@@ -42,11 +49,12 @@ public class WeatherActivity extends AppCompatActivity implements
     private GoogleApiClient mGoogleApiClient;
 
     private final int PERMISSION_LOCATION = 111;
+    private ArrayList<DailyWeatherReport> weatherReportList = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_weather);
+        setContentView(me.akhilarimbra.funshine.R.layout.activity_weather);
 
         mGoogleApiClient = new GoogleApiClient.Builder(this)
                 .addApi(LocationServices.API)
@@ -66,14 +74,54 @@ public class WeatherActivity extends AppCompatActivity implements
                 Request.Method.GET, url, null, new Response.Listener<JSONObject>() {
             @Override
             public void onResponse(JSONObject response) {
-                Log.v("Funshine", "Response : " + response.toString());
-                Toast.makeText(WeatherActivity.this, "Response : " + response.toString(), Toast.LENGTH_SHORT).show();
+                // Log.v("Funshine", "Response : " + response.toString());
+                // Toast.makeText(WeatherActivity.this, "Response : " + response.toString(), Toast.LENGTH_SHORT).show();
+
+                try {
+                    JSONObject city = response.getJSONObject("city"); // city is a json object, check sample json parse for reference
+                    String cityName = city.getString("name"); // Since 'city' is a singular non-json object
+                    String countryName = city.getString("country");
+
+                    JSONArray list = response.getJSONArray("list");
+
+                    for (int i = 0; i <= 4 ; i++) { // Getting the first 4 items in the list array
+                        JSONObject object = list.getJSONObject(i);
+                        JSONObject main = object.getJSONObject("main");
+
+                        Double currentTemp = main.getDouble("temp"); // current temperature
+                        Double minTemp = main.getDouble("temp_min"); // minimum temperature
+                        Double maxTemp = main.getDouble("temp_max"); // maximum temperature
+
+                        JSONArray weatherArray = object.getJSONArray("weather"); // parsing array containing weather details
+                        JSONObject weather = weatherArray.getJSONObject(0); // getting the first and only array element
+
+                        String weatherType = weather.getString("main"); // getting type of the weather
+                        String rawDate = object.getString("dt_txt"); // parsing the raw date time
+
+                        DailyWeatherReport report = new DailyWeatherReport(
+                                cityName,
+                                countryName,
+                                weatherType,
+                                rawDate,
+                                currentTemp.intValue(),
+                                minTemp.intValue(),
+                                maxTemp.intValue()
+                        );
+
+                        Log.v("JSON", "Printing from class : " + report.getWeather()); // Checking Bugs
+                        weatherReportList.add(report);
+                    }
+
+                    Log.v("JSON", "City : " + cityName + ", Country : " + countryName);
+                } catch (JSONException exception) {
+                    Log.v("JSON", "Exception : " + exception.getLocalizedMessage());
+                }
             }
         }, new Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
-                Log.v("Funshine", "Error : " + error.getLocalizedMessage());
-                Toast.makeText(WeatherActivity.this, "Error : " + error.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
+                // Log.v("Funshine", "Error : " + error.getLocalizedMessage());
+                // Toast.makeText(WeatherActivity.this, "Error : " + error.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
             }
         });
 
