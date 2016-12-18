@@ -5,6 +5,14 @@ package me.akhilarimbra.funshine.model;
  */
 
 public class DailyWeatherReport {
+
+    public static final String WEATHER_TYPE_CLOUDS = "Clouds";
+    public static final String WEATHER_TYPE_CLEAR = "Clear";
+    public static final String WEATHER_TYPE_RAIN = "Rain";
+    public static final String WEATHER_TYPE_WIND = "Wind";
+    public static final String WEATHER_TYPE_HEART = "Heart";
+    public static final String WEATHER_TYPE_SNOW = "Snow";
+
     private String cityName;
     private String countryName;
     private String weather;

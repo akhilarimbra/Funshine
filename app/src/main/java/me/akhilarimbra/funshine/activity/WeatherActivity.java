@@ -10,7 +10,14 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.android.volley.Request;
@@ -31,6 +38,7 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 
 import me.akhilarimbra.funshine.*;
+import me.akhilarimbra.funshine.R;
 import me.akhilarimbra.funshine.model.DailyWeatherReport;
 
 public class WeatherActivity extends AppCompatActivity implements
@@ -43,7 +51,7 @@ public class WeatherActivity extends AppCompatActivity implements
 
     final String URL_BASE = "http://api.openweathermap.org/data/2.5/forecast";
     final String URL_COORDINATES = "?lat=" ;// + this.latitude + "&lon=" + this.longitude ?lat={lat}&lon={lon}
-    final String URL_UNITS = "&units=imperial";
+    final String URL_UNITS = "&units=metric";
     final String URL_API_KEY = "&APPID=9d0eb7b77dab04ca7f1b6f7fb038aba4";
 
     private GoogleApiClient mGoogleApiClient;
@@ -51,10 +59,32 @@ public class WeatherActivity extends AppCompatActivity implements
     private final int PERMISSION_LOCATION = 111;
     private ArrayList<DailyWeatherReport> weatherReportList = new ArrayList<>();
 
+    private ImageView weatherIconMini, weatherIcon;
+    private TextView weatherDate, currentTemp, minTemp, cityCountry, weatherDescription;
+
+    WeatherAdapter adapter;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(me.akhilarimbra.funshine.R.layout.activity_weather);
+
+        weatherIconMini = (ImageView) findViewById(R.id.weatherIconMini);
+        weatherIcon = (ImageView) findViewById(R.id.weatherIcon);
+
+        weatherDate = (TextView) findViewById(R.id.weatherDate);
+        currentTemp = (TextView) findViewById(R.id.currentTemp);
+        minTemp = (TextView) findViewById(R.id.minTemp);
+        cityCountry = (TextView) findViewById(R.id.cityCountry);
+        weatherDescription = (TextView) findViewById(R.id.weatherDescription);
+
+        RecyclerView recyclerView = (RecyclerView) findViewById(R.id.content_weather_reports);
+
+        adapter = new WeatherAdapter(weatherReportList);
+        recyclerView.setAdapter(adapter);
+
+        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
+        recyclerView.setLayoutManager(linearLayoutManager);
 
         mGoogleApiClient = new GoogleApiClient.Builder(this)
                 .addApi(LocationServices.API)
@@ -116,6 +146,9 @@ public class WeatherActivity extends AppCompatActivity implements
                 } catch (JSONException exception) {
                     Log.v("JSON", "Exception : " + exception.getLocalizedMessage());
                 }
+
+                updateUI();
+                adapter.notifyDataSetChanged();
             }
         }, new Response.ErrorListener() {
             @Override
@@ -126,6 +159,50 @@ public class WeatherActivity extends AppCompatActivity implements
         });
 
         Volley.newRequestQueue(this).add(jsonObjectRequest);
+    }
+
+    public void updateUI() {
+        if (weatherReportList.size() > 0) {
+            DailyWeatherReport report = weatherReportList.get(0);
+
+            switch (report.getWeather()) {
+                case DailyWeatherReport.WEATHER_TYPE_CLEAR:
+                    weatherIcon.setImageDrawable(getDrawable(R.drawable.sunny));
+                    weatherIconMini.setImageDrawable(getDrawable(R.drawable.sunny_mini));
+                    break;
+                case DailyWeatherReport.WEATHER_TYPE_CLOUDS:
+                    weatherIcon.setImageDrawable(getDrawable(R.drawable.cloudy));
+                    weatherIconMini.setImageDrawable(getDrawable(R.drawable.cloudy_mini));
+                    break;
+                case DailyWeatherReport.WEATHER_TYPE_HEART:
+                    weatherIcon.setImageDrawable(getDrawable(R.drawable.sunny));
+                    weatherIconMini.setImageDrawable(getDrawable(R.drawable.sunny_mini));
+                    break;
+                case DailyWeatherReport.WEATHER_TYPE_RAIN:
+                    weatherIcon.setImageDrawable(getDrawable(R.drawable.rainy));
+                    weatherIconMini.setImageDrawable(getDrawable(R.drawable.rainy_mini));
+                    break;
+                case DailyWeatherReport.WEATHER_TYPE_SNOW:
+                    weatherIcon.setImageDrawable(getDrawable(R.drawable.snow));
+                    weatherIconMini.setImageDrawable(getDrawable(R.drawable.snow_mini));
+                    break;
+                case DailyWeatherReport.WEATHER_TYPE_WIND:
+                    weatherIcon.setImageDrawable(getDrawable(R.drawable.sunny));
+                    weatherIconMini.setImageDrawable(getDrawable(R.drawable.sunny_mini));
+                    break;
+                default:
+                    weatherIcon.setImageDrawable(getDrawable(R.drawable.sunny));
+                    weatherIconMini.setImageDrawable(getDrawable(R.drawable.sunny_mini));
+                    Toast.makeText(this, "Weather Condition Unknown", Toast.LENGTH_SHORT).show();
+                    break;
+            }
+
+            weatherDate.setText("Today, December 21");
+            currentTemp.setText(Integer.toString(report.getCurrentTemp()) + "°");
+            minTemp.setText(Integer.toString(report.getMinTemp()) + "°");
+            cityCountry.setText(report.getCityName() + ", " + report.getCountryName());
+            weatherDescription.setText(report.getWeather());
+        }
     }
 
     @Override
@@ -175,6 +252,85 @@ public class WeatherActivity extends AppCompatActivity implements
                 } else {
                     Toast.makeText(this, "Starting Location Services Failed : PERMISSION DENIED", Toast.LENGTH_SHORT).show();
                 }
+        }
+    }
+
+    public class WeatherAdapter extends RecyclerView.Adapter<WeatherReportViewHolder> {
+
+        private ArrayList<DailyWeatherReport> dailyWeatherReports;
+
+        public WeatherAdapter(ArrayList<DailyWeatherReport> dailyWeatherReports) {
+            this.dailyWeatherReports = dailyWeatherReports;
+        }
+
+        @Override
+        public void onBindViewHolder(WeatherReportViewHolder holder, int position) {
+            DailyWeatherReport report = dailyWeatherReports.get(position);
+            holder.updateUI(report);
+        }
+
+        @Override
+        public WeatherReportViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+            View cardView = LayoutInflater.from(parent.getContext()).inflate(R.layout.card_weather, parent, false);
+            return new WeatherReportViewHolder(cardView);
+            //return null;
+        }
+
+        @Override
+        public int getItemCount() {
+            return dailyWeatherReports.size();
+        }
+    }
+
+    public class WeatherReportViewHolder extends RecyclerView.ViewHolder {
+
+        private ImageView weatherIcon;
+        private TextView weatherDate;
+        private TextView weatherDescription;
+        private TextView maximumTemperature;
+        private TextView minimumTemperature;
+
+        public WeatherReportViewHolder(View itemView) {
+            super(itemView);
+
+            weatherIcon = (ImageView) itemView.findViewById(R.id.weather_icon);
+            weatherDate = (TextView) itemView.findViewById(R.id.weather_day);
+            weatherDescription = (TextView) itemView.findViewById(R.id.weather_description);
+            maximumTemperature = (TextView) itemView.findViewById(R.id.max_temp);
+            minimumTemperature = (TextView) itemView.findViewById(R.id.min_temp);
+        }
+
+        public void updateUI(DailyWeatherReport dailyWeatherReport) {
+
+            weatherDate.setText(dailyWeatherReport.getFormattedDate());
+            weatherDescription.setText(dailyWeatherReport.getWeather());
+            maximumTemperature.setText(dailyWeatherReport.getMaxTemp() + "°");
+            minimumTemperature.setText(dailyWeatherReport.getMinTemp() + "°");
+
+            switch (dailyWeatherReport.getWeather()) {
+                case DailyWeatherReport.WEATHER_TYPE_CLEAR:
+                    weatherIcon.setImageDrawable(getDrawable(R.drawable.sunny_mini));
+                    break;
+                case DailyWeatherReport.WEATHER_TYPE_CLOUDS:
+                    weatherIcon.setImageDrawable(getDrawable(R.drawable.cloudy_mini));
+                    break;
+                case DailyWeatherReport.WEATHER_TYPE_HEART:
+                    weatherIcon.setImageDrawable(getDrawable(R.drawable.sunny_mini));
+                    break;
+                case DailyWeatherReport.WEATHER_TYPE_RAIN:
+                    weatherIcon.setImageDrawable(getDrawable(R.drawable.rainy_mini));
+                    break;
+                case DailyWeatherReport.WEATHER_TYPE_SNOW:
+                    weatherIcon.setImageDrawable(getDrawable(R.drawable.snow_mini));
+                    break;
+                case DailyWeatherReport.WEATHER_TYPE_WIND:
+                    weatherIcon.setImageDrawable(getDrawable(R.drawable.sunny_mini));
+                    break;
+                default:
+                    weatherIcon.setImageDrawable(getDrawable(R.drawable.sunny_mini));
+                    //Toast.makeText(this, "Weather Condition Unknown", Toast.LENGTH_SHORT).show();
+                    break;
+            }
         }
     }
 }
